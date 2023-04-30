@@ -23,22 +23,35 @@ import java.util.List;
  */
 public class Main {
 
-    /**
-     * 参数一定要正确，否者会调用失败
-     *
-     * @param args 参数要求查看README.md
-     */
+    private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+    private final static String CLIENT_ID;
+    private final static String CLIENT_SECRET;
+    private final static String TENANT_GUID;
+    private final static String USERNAME;
+    private final static String PASSWORD;
+    private final static List<String> SCOPES = Collections.singletonList("https://graph.microsoft.com/.default");
+
+    static {
+        Properties officeE5Properties = new Properties();
+        try {
+            officeE5Properties.load(Main.class.getResourceAsStream("/officeE5.properties"));
+        } catch (IOException e) {
+            LOGGER.error("获取文件officeE5.properties失败，错误信息：{}", e.toString());
+        }
+        CLIENT_ID = officeE5Properties.getProperty("CLIENT_ID");
+        CLIENT_SECRET = officeE5Properties.getProperty("CLIENT_SECRET");
+        TENANT_GUID = officeE5Properties.getProperty("TENANT_GUID");
+        USERNAME = officeE5Properties.getProperty("USERNAME");
+        PASSWORD = officeE5Properties.getProperty("PASSWORD");
+    }
+
     public static void main(String[] args) {
-        UsernamePasswordProvider authProvider = new UsernamePasswordProvider(args[0], Collections.singletonList("https://graph.microsoft.com/.default"),
-                args[1], args[2], NationalCloud.Global, args[3], args[4]);
+        UsernamePasswordProvider authProvider = new UsernamePasswordProvider(CLIENT_ID, SCOPES, USERNAME, PASSWORD, NationalCloud.Global, TENANT_GUID, CLIENT_SECRET);
         IGraphServiceClient graphClient = GraphServiceClient.builder().authenticationProvider(authProvider).buildClient();
-        // 参数错误的时候会报错，而且也获取不了，jar包里面自己处理了(e.printStackTrace())
-        // 获取用户
         User user = graphClient.me().buildRequest().get();
-        // 查看用户邮件列表
         IMessageCollectionPage iMessageCollectionPage = graphClient.users(user.userPrincipalName).messages().buildRequest().select("sender,subject").get();
         List<Message> messageList = iMessageCollectionPage.getCurrentPage();
-        System.out.println(String.format("运行时间：%s —— 共有%d封件邮件", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")), messageList.size()));
+        LOGGER.info("运行时间：{} —— 共有{}封件邮件", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")), messageList.size());
     }
 
 }
